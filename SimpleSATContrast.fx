@@ -1,0 +1,80 @@
+/*
+	MIT Licensed:
+
+	Copyright (c) 2017 Lucas Melo
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+#include "ReShadeUI.fxh"
+#include "ReShade.fxh"
+
+
+uniform float Saturation <
+__UNIFORM_SLIDER_FLOAT1
+ui_min = 0.0; ui_max = 4.0; > = 1.0;
+
+
+uniform float Gamma < __UNIFORM_SLIDER_FLOAT1
+ui_min = 0.0; ui_max = 2.0; > = 1.0;
+
+uniform float Contrast < __UNIFORM_SLIDER_FLOAT1
+ui_min = 0.0; ui_max = 2.0; > = 1.0;
+
+uniform float Brightness < __UNIFORM_SLIDER_FLOAT1
+ui_min = 0.0; ui_max = 1.0; > = 0.0;
+
+
+float4 applyContrast(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV_Target {
+	float3 pixelColor = tex2D(ReShade::BackBuffer, texcoord);
+	
+	pixelColor = Contrast*(pixelColor-0.5)+0.5 + Brightness;
+	
+
+	//clamps values between 0 - 1
+	pixelColor = saturate(pixelColor);
+	
+	return float4(pixelColor, 1.0);
+}
+float4 applySaturation(float4 vpos : SV_Position, float2 texcoord : TEXCOORD) : SV_Target {
+	float3 pixelColor = tex2D(ReShade::BackBuffer, texcoord);
+
+	//creates a greyscale appropriate for saturation which extenuates green since green is most impactful when it comes to the perception of saturation
+	float greyScale = dot(pixelColor, float3(0.299, 0.587, 0.114));
+	
+	pixelColor = lerp(float3(greyScale, greyScale, greyScale), pixelColor, Saturation);
+	
+	//clamps values between 0 - 1
+	pixelColor = saturate(pixelColor);
+	
+	return float4(pixelColor, 1.0);
+}
+
+
+technique myShader {
+	pass {
+		VertexShader = PostProcessVS;
+		PixelShader = applyContrast;
+	}
+	pass {
+		VertexShader = PostProcessVS;
+		PixelShader = applySaturation; 
+	}
+
+}
